@@ -1,0 +1,5 @@
+# SSL 证书目录
+# 将从腾讯云下载的证书文件放在这里：
+#   fullchain.pem — Nginx 证书链
+#   privkey.pem   — 私钥
+# 这些文件不会被提交到 Git (.gitignore)

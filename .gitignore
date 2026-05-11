@@ -34,5 +34,10 @@ llm_cache.json
 .DS_Store
 Thumbs.db
 
+# SSL certificates (sensitive)
+deploy/ssl/*.pem
+deploy/ssl/*.key
+deploy/ssl/*.crt
+
 # Skills
 skills-lock.json

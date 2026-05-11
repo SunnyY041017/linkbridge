@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>灵桥 LinkBridge — 投研报告</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  --bg: #0f1419;
+  --surface: #1a1f2e;
+  --surface2: #222837;
+  --border: #2a3040;
+  --text: #e4e8f1;
+  --text2: #8b95a8;
+  --accent: #3b82f6;
+  --green: #10b981;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --radius: 10px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.header-controls input {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  width: 140px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+
+.source-badge {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(245,158,11,.2);
+  color: var(--yellow);
+}
+
+.source-badge.live {
+  background: rgba(16,185,129,.2);
+  color: var(--green);
+}
+
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Grid layout */
+.grid { display: grid; gap: 20px; }
+.grid-2 { grid-template-columns: 1fr 1fr; }
+.grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.grid-2-1 { grid-template-columns: 2fr 1fr; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title::before {
+  content: '';
+  width: 3px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.chart-box { width: 100%; height: 400px; }
+.chart-box.short { height: 300px; }
+.chart-box.tall { height: 500px; }
+
+/* Metric pills */
+.metrics-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.metric-pill {
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 100px;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+.metric-value.positive { color: var(--green); }
+.metric-value.negative { color: var(--red); }
+.metric-value.neutral { color: var(--accent); }
+
+/* Risk bars */
+.risk-bar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.risk-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  margin: 0 12px;
+  overflow: hidden;
+}
+
+.risk-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .5s;
+}
+
+@media (max-width: 900px) {
+  .grid-2, .grid-3, .grid-2-1 { grid-template-columns: 1fr; }
+  .chart-box, .chart-box.tall { height: 300px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>灵桥 LinkBridge · 投研报告</h1>
+  <div class="header-controls">
+    <span id="sourceBadge" class="source-badge">加载中...</span>
+    <input type="text" id="symbolInput" value="600519" placeholder="股票代码" onkeydown="if(event.key==='Enter')loadReport()">
+    <button class="btn btn-primary" onclick="loadReport()">分析</button>
+    <a href="/" style="color:var(--text2);font-size:13px;text-decoration:none">← 对话</a>
+  </div>
+</header>
+
+<main>
+  <!-- Risk Metrics Row -->
+  <div id="riskMetrics" class="metrics-row"></div>
+
+  <!-- K-line Chart -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">K 线图 · 技术指标</div>
+    <div class="chart-box tall" id="chartKline"></div>
+  </div>
+
+  <!-- MACD + RSI -->
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">MACD</div>
+      <div class="chart-box short" id="chartMacd"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">RSI (14)</div>
+      <div class="chart-box short" id="chartRsi"></div>
+    </div>
+  </div>
+
+  <!-- Radar + Valuation -->
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">风险收益雷达</div>
+      <div class="chart-box" id="chartRadar"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">估值概览</div>
+      <div id="valuationPanel"></div>
+    </div>
+  </div>
+
+  <!-- Bond Duration Curve -->
+  <div class="card">
+    <div class="card-title">债券利率敏感性曲线（10Y 国债示例）</div>
+    <div class="chart-box" id="chartBond"></div>
+  </div>
+</main>
+
+<script>
+let klineChart, macdChart, rsiChart, radarChart, bondChart;
+
+function initChart(domId) {
+  const dom = document.getElementById(domId);
+  if (!dom) return null;
+  const chart = echarts.init(dom, 'dark');
+  window.addEventListener('resize', () => chart.resize());
+  return chart;
+}
+
+function darkTheme() {
+  return {
+    textStyle: { color: '#e4e8f1' },
+    axisLine: { lineStyle: { color: '#2a3040' } },
+    splitLine: { lineStyle: { color: '#1a1f2e' } },
+  };
+}
+
+// Load data and render all charts
+async function loadReport() {
+  const symbol = document.getElementById('symbolInput').value.trim();
+  if (!symbol) return;
+
+  document.getElementById('sourceBadge').textContent = '加载中...';
+  document.getElementById('sourceBadge').className = 'source-badge';
+
+  try {
+    const resp = await fetch(`/api/v1/chart-data/${symbol}?days=180`);
+    if (!resp.ok) throw new Error('数据获取失败');
+    const data = await resp.json();
+
+    // Source badge
+    const badge = document.getElementById('sourceBadge');
+    badge.textContent = data.data_source === 'live' ? '实时数据' : '模拟数据';
+    badge.className = 'source-badge ' + (data.data_source === 'live' ? 'live' : '');
+
+    renderRiskMetrics(data.risk, data.valuation);
+    renderKline(data);
+    renderMacd(data);
+    renderRsi(data);
+    renderRadar(data.risk);
+    renderValuation(data.valuation, data.risk);
+    renderBondCurve(data.bond_risk, data.price_curve);
+
+  } catch (err) {
+    document.getElementById('sourceBadge').textContent = '错误: ' + err.message;
+    document.getElementById('sourceBadge').className = 'source-badge';
+  }
+}
+
+function renderRiskMetrics(risk, valuation) {
+  const el = document.getElementById('riskMetrics');
+  const items = [
+    { label: '年化收益', value: risk.annualized_return, suffix: '%', cls: (risk.annualized_return||0) >= 0 ? 'positive' : 'negative' },
+    { label: '年化波动', value: risk.annualized_volatility, suffix: '%', cls: 'neutral' },
+    { label: 'Sharpe', value: risk.sharpe_ratio, suffix: '', cls: (risk.sharpe_ratio||0) >= 1 ? 'positive' : 'neutral' },
+    { label: '最大回撤', value: risk.max_drawdown, suffix: '%', cls: 'negative' },
+    { label: 'VaR(95%)', value: risk.var_95, suffix: '%', cls: 'negative' },
+    { label: 'Beta', value: risk.beta, suffix: '', cls: 'neutral' },
+    { label: 'PE', value: valuation.pe, suffix: '', cls: 'neutral' },
+    { label: 'ROE', value: valuation.roe, suffix: '%', cls: (valuation.roe||0) >= 10 ? 'positive' : 'neutral' },
+  ];
+
+  el.innerHTML = items.map(i => `
+    <div class="metric-pill">
+      <div class="metric-value ${i.cls}">${i.value != null ? i.value + i.suffix : 'N/A'}</div>
+      <div class="metric-label">${i.label}</div>
+    </div>
+  `).join('');
+}
+
+function renderKline(data) {
+  if (!klineChart) klineChart = initChart('chartKline');
+  if (!klineChart) return;
+
+  const upColor = '#10b981';
+  const downColor = '#ef4444';
+
+  klineChart.setOption({
+    ...darkTheme(),
+    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+    grid: [
+      { left: '8%', right: '8%', top: '5%', height: '60%' },
+      { left: '8%', right: '8%', top: '72%', height: '20%' },
+    ],
+    xAxis: [
+      { type: 'category', data: data.dates, gridIndex: 0, axisLabel: { show: false } },
+      { type: 'category', data: data.dates, gridIndex: 1 },
+    ],
+    yAxis: [
+      { type: 'value', gridIndex: 0, scale: true },
+      { type: 'value', gridIndex: 1 },
+    ],
+    series: [
+      {
+        name: 'K线', type: 'candlestick', data: data.kline,
+        itemStyle: { color: upColor, color0: downColor, borderColor: upColor, borderColor0: downColor },
+      },
+      { name: 'MA5', type: 'line', data: data.ma5, smooth: true, lineStyle: { width: 1 }, symbol: 'none' },
+      { name: 'MA10', type: 'line', data: data.ma10, smooth: true, lineStyle: { width: 1 }, symbol: 'none' },
+      { name: 'MA20', type: 'line', data: data.ma20, smooth: true, lineStyle: { width: 1 }, symbol: 'none' },
+      {
+        name: '成交量', type: 'bar', data: data.volume, xAxisIndex: 1, yAxisIndex: 1,
+        itemStyle: { color: function(p) {
+          const k = data.kline[p.dataIndex];
+          return k && k[1] >= k[0] ? upColor : downColor;
+        }},
+      },
+    ],
+  });
+}
+
+function renderMacd(data) {
+  if (!macdChart) macdChart = initChart('chartMacd');
+  if (!macdChart || !data.macd.dif.length) return;
+
+  macdChart.setOption({
+    ...darkTheme(),
+    tooltip: { trigger: 'axis' },
+    grid: { left: '10%', right: '5%', top: '5%', bottom: '10%' },
+    xAxis: { type: 'category', data: data.dates },
+    yAxis: { type: 'value' },
+    series: [
+      { name: 'DIF', type: 'line', data: data.macd.dif, lineStyle: { color: '#3b82f6' }, symbol: 'none' },
+      { name: 'DEA', type: 'line', data: data.macd.dea, lineStyle: { color: '#f59e0b' }, symbol: 'none' },
+      {
+        name: '柱', type: 'bar', data: data.macd.hist,
+        itemStyle: { color: function(p) { return p.value >= 0 ? '#10b981' : '#ef4444'; } },
+      },
+    ],
+  });
+}
+
+function renderRsi(data) {
+  if (!rsiChart) rsiChart = initChart('chartRsi');
+  if (!rsiChart || !data.rsi.length) return;
+
+  rsiChart.setOption({
+    ...darkTheme(),
+    tooltip: { trigger: 'axis' },
+    grid: { left: '10%', right: '5%', top: '5%', bottom: '10%' },
+    xAxis: { type: 'category', data: data.dates },
+    yAxis: { type: 'value', min: 0, max: 100 },
+    series: [{
+      name: 'RSI', type: 'line', data: data.rsi,
+      lineStyle: { color: '#6366f1', width: 2 },
+      symbol: 'none',
+      markLine: {
+        silent: true,
+        data: [
+          { yAxis: 70, label: { formatter: '超买 70' }, lineStyle: { color: '#ef4444', type: 'dashed' } },
+          { yAxis: 30, label: { formatter: '超卖 30' }, lineStyle: { color: '#10b981', type: 'dashed' } },
+        ],
+      },
+    }],
+  });
+}
+
+function renderRadar(risk) {
+  if (!radarChart) radarChart = initChart('chartRadar');
+  if (!radarChart) return;
+
+  radarChart.setOption({
+    ...darkTheme(),
+    radar: {
+      center: ['50%', '55%'],
+      radius: '70%',
+      indicator: [
+        { name: '年化收益', max: Math.max(Math.abs(risk.annualized_return||0)*1.5, 30) },
+        { name: '夏普比率', max: Math.max((risk.sharpe_ratio||0)*1.5, 3) },
+        { name: '波动率', max: Math.max((risk.annualized_volatility||0)*1.5, 40) },
+        { name: '最大回撤(逆)', max: Math.max(Math.abs(risk.max_drawdown||0)*1.5, 30) },
+        { name: 'Beta', max: Math.max(Math.abs(risk.beta||0)*1.5, 3) },
+      ],
+    },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: [
+          risk.annualized_return || 0,
+          risk.sharpe_ratio || 0,
+          -(risk.annualized_volatility || 0),
+          Math.abs(risk.max_drawdown || 0),
+          Math.abs(risk.beta || 0),
+        ],
+        name: '当前',
+        areaStyle: { color: 'rgba(59,130,246,.3)' },
+        lineStyle: { color: '#3b82f6' },
+        itemStyle: { color: '#3b82f6' },
+      }],
+    }],
+  });
+}
+
+function renderValuation(valuation, risk) {
+  const el = document.getElementById('valuationPanel');
+  const items = [
+    { label: '市盈率 PE', value: valuation.pe, threshold: [15, 30] },
+    { label: '市净率 PB', value: valuation.pb, threshold: [1.5, 4] },
+    { label: 'ROE (%)', value: valuation.roe, threshold: [5, 15] },
+    { label: 'ROA (%)', value: valuation.roa, threshold: [1, 3] },
+    { label: '营收增速 (%)', value: valuation.revenue_yoy, threshold: [5, 20] },
+    { label: '利润增速 (%)', value: valuation.profit_yoy, threshold: [5, 20] },
+    { label: 'Beta', value: risk.beta, threshold: [0.8, 1.5] },
+    { label: '夏普比率', value: risk.sharpe_ratio, threshold: [0.5, 1.5] },
+  ];
+
+  el.innerHTML = items.map(i => {
+    const val = i.value != null ? i.value : null;
+    let pct = 50;
+    let cls = 'neutral';
+    if (val != null && i.threshold) {
+      pct = Math.min(100, Math.max(0, (val / (i.threshold[1] * 1.5)) * 100));
+      cls = val <= i.threshold[0] ? 'positive' : val >= i.threshold[1] ? 'negative' : 'neutral';
+    }
+    return `
+      <div class="risk-bar-item">
+        <span style="width:100px;text-align:right">${i.label}</span>
+        <div class="risk-bar-track">
+          <div class="risk-bar-fill" style="width:${pct}%;background:${cls==='positive'?'#10b981':cls==='negative'?'#ef4444':'#3b82f6'}"></div>
+        </div>
+        <span style="width:50px;font-weight:600">${val != null ? val : 'N/A'}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderBondCurve(bondRisk, priceCurve) {
+  if (!bondChart) bondChart = initChart('chartBond');
+  if (!bondChart || !priceCurve.length) return;
+
+  const ytms = priceCurve.map(p => p.ytm);
+  const prices = priceCurve.map(p => p.price);
+
+  bondChart.setOption({
+    ...darkTheme(),
+    tooltip: { trigger: 'axis' },
+    grid: { left: '10%', right: '5%', top: '8%', bottom: '10%' },
+    xAxis: { type: 'category', data: ytms, name: 'YTM (%)' },
+    yAxis: { type: 'value', name: '价格' },
+    series: [{
+      name: '债券价格', type: 'line', data: prices, smooth: true,
+      lineStyle: { color: '#3b82f6', width: 2 },
+      areaStyle: { color: 'rgba(59,130,246,.1)' },
+      symbol: 'none',
+      markPoint: {
+        data: [
+          { coord: [String(bondRisk.macaulay_duration * 0.35 + 1.5), bondRisk.current_price], symbol: 'pin', symbolSize: 40,
+            label: { formatter: `当前\nYTM 3.5%` } },
+        ],
+      },
+    }],
+  });
+}
+
+// Load on page ready
+window.addEventListener('load', () => loadReport());
+</script>
+</body>
+</html>

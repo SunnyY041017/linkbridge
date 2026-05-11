@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>灵桥 LinkBridge — AI 投研助手</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  --bg: #080c12;
+  --bg-pattern: #0d1117;
+  --surface: #131820;
+  --surface2: #1a2230;
+  --border: #1f2a38;
+  --border-glow: #2a3a50;
+  --text: #e2e8f0;
+  --text2: #8899b4;
+  --accent: #4f8cf7;
+  --accent2: #7c5cf0;
+  --accent-glow: rgba(79,140,247,.15);
+  --green: #22c98b;
+  --green-glow: rgba(34,201,139,.15);
+  --red: #f0445a;
+  --red-glow: rgba(240,68,90,.12);
+  --amber: #f0a030;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-display: 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+/* === Background Atmosphere === */
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(79,140,247,.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(124,92,240,.03) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(240,160,48,.02) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 30%, transparent 70%);
+}
+
+/* === Sidebar === */
+.sidebar {
+  width: 224px;
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width .4s cubic-bezier(.4,0,.2,1), opacity .3s;
+  position: relative;
+  z-index: 100;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.sidebar-toggle {
+  position: fixed;
+  left: 230px;
+  top: 14px;
+  z-index: 200;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .35s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 2px 12px rgba(0,0,0,.4);
+}
+
+.sidebar-toggle:hover {
+  color: var(--text);
+  border-color: var(--border-glow);
+  box-shadow: 0 2px 16px rgba(0,0,0,.5), 0 0 0 1px var(--accent-glow);
+}
+
+.sidebar.collapsed + .sidebar-toggle {
+  left: 8px;
+}
+
+.sidebar-header {
+  padding: 20px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.sidebar-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+  opacity: .3;
+}
+
+.sidebar-header h1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  background: linear-gradient(135deg, #88b8ff, var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sidebar-header p {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 3px;
+  letter-spacing: .03em;
+  font-family: var(--font-body);
+}
+
+.agent-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px;
+}
+
+.agent-list::-webkit-scrollbar { width: 3px; }
+.agent-list::-webkit-scrollbar-track { background: transparent; }
+.agent-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.agent-card {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 12px 12px 12px 14px;
+  margin-bottom: 6px;
+  border: 1px solid transparent;
+  border-left: 3px solid var(--border);
+  transition: all .3s cubic-bezier(.4,0,.2,1);
+  cursor: default;
+  position: relative;
+}
+
+.agent-card:hover {
+  background: color-mix(in srgb, var(--surface2) 92%, var(--accent));
+  border-color: var(--border-glow);
+  transform: translateX(2px);
+}
+
+.agent-card.active {
+  border-left-color: var(--accent);
+  border-color: var(--border-glow);
+  background: color-mix(in srgb, var(--surface2) 90%, var(--accent));
+  box-shadow: 0 0 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,.02);
+}
+
+.agent-card.done {
+  border-left-color: var(--green);
+  background: color-mix(in srgb, var(--surface2) 92%, var(--green));
+  box-shadow: 0 0 16px var(--green-glow);
+}
+
+.agent-card.error {
+  border-left-color: var(--red);
+  background: color-mix(in srgb, var(--surface2) 92%, var(--red));
+  box-shadow: 0 0 16px var(--red-glow);
+}
+
+.agent-card.active::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: -1px;
+  width: 3px; height: 40%;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  transform: translateY(-50%);
+  animation: indicatorPulse 2s ease-in-out infinite;
+}
+
+@keyframes indicatorPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--accent); }
+  50% { opacity: .5; box-shadow: 0 0 12px var(--accent); }
+}
+
+.agent-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 3px;
+  letter-spacing: .01em;
+}
+
+.agent-desc {
+  font-size: 12px;
+  color: var(--text2);
+  font-family: var(--font-mono);
+  letter-spacing: -.01em;
+}
+
+.agent-status {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-top: 7px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  transition: all .3s;
+}
+
+.status-idle { background: color-mix(in srgb, var(--surface2) 50%, transparent); color: var(--text2); }
+.status-running {
+  background: var(--accent-glow);
+  color: var(--accent);
+  animation: statusPulse 1.5s ease-in-out infinite;
+}
+.status-done { background: var(--green-glow); color: var(--green); }
+.status-error { background: var(--red-glow); color: var(--red); }
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .6; }
+}
+
+.sidebar-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-footer span { transition: color .3s; }
+
+/* === Main Area === */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px;
+  width: 100%;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+.chat-area::-webkit-scrollbar { width: 5px; }
+.chat-area::-webkit-scrollbar-track { background: transparent; }
+.chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+.chat-area::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+
+/* === Messages === */
+.message {
+  width: 100%;
+  margin-bottom: 24px;
+  box-sizing: border-box;
+  animation: msgEnter .4s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes msgEnter {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.message.user {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.user-bubble {
+  background: linear-gradient(135deg, var(--accent), #3b6fd4);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 18px 18px 4px 18px;
+  max-width: 80%;
+  font-size: 15px;
+  line-height: 1.65;
+  font-weight: 450;
+  box-shadow: 0 4px 16px rgba(79,140,247,.2);
+  position: relative;
+}
+
+.assistant-msg {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.assistant-msg .agent-tag {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assistant-msg .agent-tag::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79,140,247,.4); }
+  50% { box-shadow: 0 0 0 6px rgba(79,140,247,0); }
+}
+
+.assistant-msg .content {
+  width: 100%;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 28px;
+  font-size: 16px;
+  line-height: 1.85;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-align: left;
+  box-shadow: 0 2px 16px rgba(0,0,0,.2);
+  transition: border-color .3s;
+}
+
+.assistant-msg .content:hover {
+  border-color: var(--border-glow);
+}
+
+.assistant-msg .content > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* === Markdown Rendering === */
+.content h1, .content h2, .content h3, .content h4 {
+  margin: 20px 0 10px;
+  font-family: var(--font-display);
+  letter-spacing: .01em;
+}
+
+.content h1 { font-size: 26px; font-weight: 700; }
+.content h2 { font-size: 21px; color: var(--accent); font-weight: 600; }
+.content h3 { font-size: 18px; font-weight: 600; }
+
+.content p { margin: 10px 0; }
+
+.content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  font-family: var(--font-mono);
+}
+
+.content th, .content td {
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.content th {
+  background: var(--surface2);
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.content tr:hover td {
+  background: color-mix(in srgb, var(--surface2) 50%, transparent);
+}
+
+.content strong { color: var(--accent); font-weight: 600; }
+
+.content ul, .content ol { padding-left: 24px; margin: 10px 0; }
+.content li { margin: 5px 0; }
+.content li::marker { color: var(--accent2); }
+
+.content blockquote {
+  border-left: 3px solid var(--accent2);
+  padding: 12px 18px;
+  margin: 14px 0;
+  background: color-mix(in srgb, var(--surface2) 60%, transparent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+  color: var(--text2);
+}
+
+.content code {
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--amber);
+}
+
+.content pre {
+  background: color-mix(in srgb, #0a0e14 95%, transparent);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  margin: 14px 0;
+}
+
+.content pre code {
+  background: none;
+  color: var(--text);
+  padding: 0;
+}
+
+/* === Chart Container === */
+.charts-inline-section {
+  width: 100%;
+}
+
+.chart-inline {
+  width: 100%;
+  height: 320px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+/* === Input Area === */
+.input-area {
+  padding: 18px 28px 20px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: relative;
+  z-index: 10;
+}
+
+.input-area::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-glow), transparent);
+  opacity: .5;
+}
+
+.input-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.input-row input {
+  flex: 1;
+  padding: 13px 20px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  transition: all .3s cubic-bezier(.4,0,.2,1);
+  font-family: var(--font-body);
+}
+
+.input-row input::placeholder { color: var(--text2); opacity: .6; }
+
+.input-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 0 20px var(--accent-glow);
+}
+
+.btn {
+  padding: 11px 22px;
+  border: none;
+  border-radius: 28px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .3s cubic-bezier(.4,0,.2,1);
+  letter-spacing: .01em;
+  font-family: var(--font-body);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #3b6fd4);
+  color: #fff;
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 4px 20px rgba(79,140,247,.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-ghost:hover {
+  background: var(--surface2);
+  border-color: var(--border-glow);
+  color: var(--text);
+}
+
+.btn-ghost.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.toggle-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+/* === Loading Dots === */
+.typing-dots {
+  display: inline-flex;
+  gap: 5px;
+  padding: 6px 0;
+}
+
+.typing-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text2);
+  animation: bounce 1.4s ease-in-out infinite;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: .18s; }
+.typing-dots span:nth-child(3) { animation-delay: .36s; }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+  30% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* === Empty State === */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text2);
+  animation: fadeIn .6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.empty-state h2 {
+  font-family: var(--font-display);
+  font-size: 36px;
+  margin-bottom: 12px;
+  color: var(--text);
+  letter-spacing: .02em;
+  background: linear-gradient(135deg, var(--text), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.empty-state p { font-size: 15px; line-height: 1.7; }
+
+/* === Responsive === */
+@media (max-width: 900px) {
+  .sidebar { width: 0; opacity: 0; overflow: hidden; }
+  .sidebar-toggle { left: 8px; }
+  .user-bubble { max-width: 92%; }
+  .chat-area { padding: 16px; }
+  .assistant-msg .content { padding: 16px; }
+  .content table { font-size: 12px; }
+  .content th, .content td { padding: 6px 8px; }
+  .empty-state h2 { font-size: 24px; }
+}
+
+@media (min-width: 1600px) {
+  .chat-area { padding: 36px 56px; }
+  .assistant-msg .content { padding: 26px 34px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h1>灵桥 LinkBridge</h1>
+    <p>AI 原生投资研究智能体</p>
+  </div>
+  <div class="agent-list" id="agentList">
+    <div class="agent-card" data-agent="market_agent">
+      <div class="agent-name">行情分析 Agent</div>
+      <div class="agent-desc">行情数据 · 风险收益指标</div>
+      <div class="agent-status status-idle">待命</div>
+    </div>
+    <div class="agent-card" data-agent="funda_agent">
+      <div class="agent-name">基本面分析 Agent</div>
+      <div class="agent-desc">PE/PB/ROE · DCF估值</div>
+      <div class="agent-status status-idle">待命</div>
+    </div>
+    <div class="agent-card" data-agent="techn_agent">
+      <div class="agent-name">技术面分析 Agent</div>
+      <div class="agent-desc">MACD/RSI/KDJ · 均线系统</div>
+      <div class="agent-status status-idle">待命</div>
+    </div>
+    <div class="agent-card" data-agent="quant_agent">
+      <div class="agent-name">量化分析 Agent</div>
+      <div class="agent-desc">组合优化 · VaR/CVaR</div>
+      <div class="agent-status status-idle">待命</div>
+    </div>
+    <div class="agent-card" data-agent="risk_agent">
+      <div class="agent-name">风险管理 Agent</div>
+      <div class="agent-desc">久期/凸性 · 压力测试</div>
+      <div class="agent-status status-idle">待命</div>
+    </div>
+    <div class="agent-card" data-agent="senti_agent">
+      <div class="agent-name">舆情情绪 Agent</div>
+      <div class="agent-desc">新闻情绪 · 市场心理</div>
+      <div class="agent-status status-idle">待命</div>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <span id="connectionStatus">● 已连接</span>
+  </div>
+</aside>
+
+<button class="sidebar-toggle" onclick="toggleSidebar()" title="折叠/展开侧边栏">☰</button>
+
+<!-- Main Chat -->
+<main class="main">
+  <div class="chat-area" id="chatArea">
+    <div class="empty-state">
+      <h2>灵桥 LinkBridge</h2>
+      <p>输入股票代码或投资问题，AI 投研助手为您分析</p>
+      <p style="margin-top:12px;font-size:12px;color:var(--text2)">
+        试试："全面分析贵州茅台 600519" 或 "宁德时代现在值得投资吗？"
+      </p>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="toggle-row">
+      <button class="btn btn-ghost active" id="btnSingle" onclick="setMode('single')">单 Agent</button>
+      <button class="btn btn-ghost" id="btnMulti" onclick="setMode('multi')">多 Agent 编排</button>
+    </div>
+    <div class="input-row">
+      <input type="text" id="msgInput" placeholder="输入股票代码或投资问题..." onkeydown="if(event.key==='Enter')send()">
+      <button class="btn btn-primary" id="sendBtn" onclick="send()">发送</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// State
+let mode = 'single';
+let ws = null;
+let currentMsgDiv = null;
+
+// Mode toggle
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnSingle').classList.toggle('active', m === 'single');
+  document.getElementById('btnMulti').classList.toggle('active', m === 'multi');
+}
+
+// Agent status helpers
+function setAgentStatus(agent, status) {
+  const card = document.querySelector(`[data-agent="${agent}"]`);
+  if (!card) return;
+  const statusEl = card.querySelector('.agent-status');
+  card.className = 'agent-card ' + status;
+  const map = { idle: '待命', running: '分析中...', done: '已完成', error: '出错' };
+  const clsMap = { idle: 'status-idle', running: 'status-running', done: 'status-done', error: 'status-error' };
+  statusEl.textContent = map[status] || status;
+  statusEl.className = 'agent-status ' + (clsMap[status] || '');
+}
+
+function resetAgents() {
+  ['market_agent','funda_agent','techn_agent','quant_agent','risk_agent','senti_agent'].forEach(a => setAgentStatus(a, 'idle'));
+}
+
+// Send message
+function send() {
+  const input = document.getElementById('msgInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('msgInput').disabled = true;
+
+  // Remove empty state
+  const empty = document.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const chatArea = document.getElementById('chatArea');
+
+  // Add user message
+  const userDiv = document.createElement('div');
+  userDiv.className = 'message user';
+  userDiv.innerHTML = `<div class="user-bubble">${escapeHtml(msg)}</div>`;
+  chatArea.appendChild(userDiv);
+
+  // Add assistant placeholder
+  const assistantDiv = document.createElement('div');
+  assistantDiv.className = 'message assistant';
+  assistantDiv.innerHTML = `
+    <div class="assistant-msg">
+      <div class="agent-tag">${mode === 'multi' ? '多 Agent 编排' : 'Market Agent'}</div>
+      <div class="content"><div class="typing-dots"><span></span><span></span><span></span></div></div>
+    </div>`;
+  chatArea.appendChild(assistantDiv);
+  currentMsgDiv = assistantDiv;
+  chatArea.scrollTop = chatArea.scrollHeight;
+
+  input.value = '';
+
+  // Connect WebSocket
+  connectAndSend(msg, currentMsgDiv);
+}
+
+function connectAndSend(msg, msgDiv) {
+  if (ws) { ws.close(); ws = null; }
+
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${location.host}/api/v1/ws/chat`;
+  ws = new WebSocket(wsUrl);
+
+  resetAgents();
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ message: msg, multi_agent: mode === 'multi' }));
+  };
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const contentEl = msgDiv.querySelector('.content');
+
+    switch (data.type) {
+      case 'status':
+        if (data.content === 'orchestrating') {
+          setAgentStatus('market_agent', 'running');
+        }
+        break;
+
+      case 'plan':
+        // Orchestrator plan received
+        if (data.content && data.content.agents) {
+          data.content.agents.forEach(a => setAgentStatus(a, 'running'));
+          // Show plan
+          const planNote = document.createElement('div');
+          planNote.style.cssText = 'font-size:12px;color:var(--text2);margin-bottom:8px';
+          planNote.textContent = `编排策略: ${data.content.reasoning || '多 Agent 协同分析'} (${data.content.agents.length} 个 Agent)`;
+          msgDiv.querySelector('.assistant-msg').prepend(planNote);
+        }
+        break;
+
+      case 'agent_results':
+        // Agent results status
+        if (data.content) {
+          Object.entries(data.content).forEach(([agent, status]) => {
+            setAgentStatus(agent, status === 'done' ? 'done' : 'error');
+          });
+        }
+        break;
+
+      case 'chunk':
+        // Remove typing dots on first chunk + init buffer
+        if (contentEl.querySelector('.typing-dots')) {
+          contentEl.innerHTML = '';
+          msgDiv._streamBuffer = '';
+        }
+        // Accumulate raw markdown and render fully each time
+        msgDiv._streamBuffer = (msgDiv._streamBuffer || '') + data.content;
+        contentEl.innerHTML = marked.parse(msgDiv._streamBuffer);
+        const ca = document.getElementById('chatArea'); ca.scrollTop = ca.scrollHeight;
+        break;
+
+      case 'done':
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('msgInput').disabled = false;
+        document.getElementById('msgInput').focus();
+        injectCharts(contentEl, null, msg);
+        ws.close();
+        ws = null;
+        break;
+
+      case 'error':
+        contentEl.innerHTML = `<span style="color:var(--red)">错误: ${escapeHtml(data.content)}</span>`;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('msgInput').disabled = false;
+        resetAgents();
+        break;
+    }
+  };
+
+  ws.onerror = () => {
+    msgDiv.querySelector('.content').innerHTML = '<span style="color:var(--red)">连接失败，请确认服务器已启动</span>';
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('msgInput').disabled = false;
+  };
+
+  ws.onclose = () => {
+    if (msgDiv.querySelector('.typing-dots')) {
+      msgDiv.querySelector('.content').innerHTML = '<span style="color:var(--text2)">连接已关闭</span>';
+      document.getElementById('sendBtn').disabled = false;
+      document.getElementById('msgInput').disabled = false;
+    }
+    ws = null;
+  };
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('collapsed');
+}
+
+// Stock symbol extraction
+function extractSymbol(text) {
+  const m = text.match(/\b(\d{6})\b/);
+  return m ? m[1] : null;
+}
+
+// Inject ECharts after AI response
+async function injectCharts(contentEl, symbol, msg) {
+  if (!symbol && msg) symbol = extractSymbol(msg);
+  if (!symbol) return;
+  try {
+    const resp = await fetch(`/api/v1/chart-data/${symbol}?days=120`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (!data || !data.dates || !data.dates.length) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'charts-inline-section';
+    wrapper.style.cssText = 'margin-top:24px;display:flex;flex-direction:column;gap:16px;';
+
+    // Section label
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-mono);margin-bottom:4px;';
+    label.textContent = `📈 ${symbol} 可视化图表`;
+    wrapper.appendChild(label);
+
+    // K-line chart (candlestick + volume)
+    const klDiv = document.createElement('div');
+    klDiv.className = 'chart-inline';
+    klDiv.style.height = '320px';
+    wrapper.appendChild(klDiv);
+
+    // RSI chart
+    const rsiDiv = document.createElement('div');
+    rsiDiv.className = 'chart-inline';
+    rsiDiv.style.height = '200px';
+    wrapper.appendChild(rsiDiv);
+
+    contentEl.appendChild(wrapper);
+
+    // Init charts after DOM attached
+    requestAnimationFrame(() => {
+      initKlineChart(klDiv, data);
+      initRsiChart(rsiDiv, data);
+    });
+  } catch(e) { console.error('Chart inject error:', e); }
+}
+
+function initKlineChart(dom, data) {
+  const chart = echarts.init(dom, null, { devicePixelRatio: window.devicePixelRatio || 1 });
+  const upColor = '#22c98b', downColor = '#f0445a';
+  const dates = data.dates || [];
+  // API returns kline as [[open, close, low, high], ...] — ECharts candlestick format
+  const ohlc = data.kline || [];
+  // Sign volume: positive for up days, negative for down
+  const rawVol = data.volume || [];
+  const vols = rawVol.map((v, i) => ohlc[i] ? (ohlc[i][1] >= ohlc[i][0] ? v : -v) : v);
+  const ma5 = data.ma5 || [], ma10 = data.ma10 || [], ma20 = data.ma20 || [];
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    grid: [
+      { left: '3%', right: '3%', top: '8%', height: '60%' },
+      { left: '3%', right: '3%', top: '76%', height: '16%' }
+    ],
+    xAxis: [
+      { type: 'category', data: dates, gridIndex: 0, axisLine: { lineStyle: { color: '#1f2a38' } },
+        axisLabel: { color: '#8899b4', fontSize: 10, formatter: v => v.slice(5) },
+        axisTick: { show: false } },
+      { type: 'category', data: dates, gridIndex: 1, axisLine: { lineStyle: { color: '#1f2a38' } },
+        axisLabel: { show: false }, axisTick: { show: false } }
+    ],
+    yAxis: [
+      { type: 'value', gridIndex: 0, scale: true, splitLine: { lineStyle: { color: '#1f2a38', type: 'dashed' } },
+        axisLabel: { color: '#8899b4', fontSize: 10 } },
+      { type: 'value', gridIndex: 1, splitLine: { show: false },
+        axisLabel: { color: '#8899b4', fontSize: 10 } }
+    ],
+    series: [
+      { name: 'K线', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
+        itemStyle: { color: upColor, color0: downColor, borderColor: upColor, borderColor0: downColor } },
+      { name: 'MA5', type: 'line', data: ma5, xAxisIndex: 0, yAxisIndex: 0, smooth: true,
+        lineStyle: { color: '#f0a030', width: 1 }, symbol: 'none' },
+      { name: 'MA10', type: 'line', data: ma10, xAxisIndex: 0, yAxisIndex: 0, smooth: true,
+        lineStyle: { color: '#7c5cf0', width: 1 }, symbol: 'none' },
+      { name: 'MA20', type: 'line', data: ma20, xAxisIndex: 0, yAxisIndex: 0, smooth: true,
+        lineStyle: { color: '#4f8cf7', width: 1 }, symbol: 'none' },
+      { name: '成交量', type: 'bar', data: vols, xAxisIndex: 1, yAxisIndex: 1,
+        itemStyle: { color: params => params.data >= 0 ? upColor : downColor } }
+    ],
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'cross' },
+      backgroundColor: 'rgba(19,24,32,.95)', borderColor: '#1f2a38',
+      textStyle: { color: '#e2e8f0', fontSize: 12 }
+    },
+    animation: true,
+    animationDuration: 800
+  });
+  window.addEventListener('resize', () => chart.resize());
+}
+
+function initRsiChart(dom, data) {
+  const chart = echarts.init(dom, null, { devicePixelRatio: window.devicePixelRatio || 1 });
+  const dates = data.dates || [];
+  const rsi = data.rsi || [];
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    grid: { left: '3%', right: '3%', top: '12%', bottom: '8%' },
+    xAxis: { type: 'category', data: dates,
+      axisLine: { lineStyle: { color: '#1f2a38' } },
+      axisLabel: { color: '#8899b4', fontSize: 10, formatter: v => v.slice(5) },
+      axisTick: { show: false } },
+    yAxis: { type: 'value', min: 0, max: 100,
+      splitLine: { lineStyle: { color: '#1f2a38', type: 'dashed' } },
+      axisLabel: { color: '#8899b4', fontSize: 10 } },
+    series: [
+      { name: 'RSI', type: 'line', data: rsi, smooth: true,
+        lineStyle: { color: '#4f8cf7', width: 2 },
+        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(79,140,247,.2)' }, { offset: 1, color: 'rgba(79,140,247,.02)' }]) },
+        symbol: 'none',
+        markLine: {
+          silent: true, symbol: 'none',
+          lineStyle: { type: 'dashed', width: 1 },
+          label: { fontSize: 10, color: '#8899b4', formatter: '{b}' },
+          data: [
+            { yAxis: 70, lineStyle: { color: '#f0445a' }, label: { color: '#f0445a' } },
+            { yAxis: 30, lineStyle: { color: '#22c98b' }, label: { color: '#22c98b' } }
+          ]
+        }
+      }
+    ],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(19,24,32,.95)', borderColor: '#1f2a38',
+      textStyle: { color: '#e2e8f0', fontSize: 12 }
+    },
+    animation: true,
+    animationDuration: 600
+  });
+  window.addEventListener('resize', () => chart.resize());
+}
+
+// Init status
+document.getElementById('connectionStatus').textContent = '● 就绪';
+</script>
+</body>
+</html>

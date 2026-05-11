@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+.env
+*.egg-info
+.git
+.pytest_cache
+test_result.txt
+test_*.txt
+*.log
+prompts/eval_report.md
+llm_cache.json

@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: linkbridge-app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - TONGYI_API_KEY=${TONGYI_API_KEY:-}
+      - ZHIPU_API_KEY=${ZHIPU_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - llm_cache:/app/backend/llm_cache.json
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: linkbridge-db
+    environment:
+      POSTGRES_USER: linkbridge
+      POSTGRES_PASSWORD: linkbridge_dev
+      POSTGRES_DB: linkbridge
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: linkbridge-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  llm_cache:

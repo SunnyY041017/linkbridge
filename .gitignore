@@ -1,0 +1,38 @@
+# LinkBridge .gitignore
+
+# Environment
+.env
+*.env.local
+*.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Test output
+test_result.txt
+test_*_result.txt
+test_orchestrator_result.txt
+test_e2e_result.txt
+
+# Cache & logs
+llm_cache.json
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Skills
+skills-lock.json
